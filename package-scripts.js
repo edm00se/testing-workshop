@@ -4,85 +4,268 @@ const {
   series,
   runInNewWindow,
   crossEnv,
+  rimraf,
   commonTags,
+  ifWindows,
 } = require('nps-utils')
 
 const {oneLine} = commonTags
 
+const hiddenFromHelp = true
+
+const inApi = (...scripts) => series('cd api', ...scripts, 'cd ..')
+const inClient = (...scripts) => series('cd client', ...scripts, 'cd ..')
+
+const delay = s => ifWindows(`timeout ${s}`, `sleep ${s}`)
+const ignoreOutput = s =>
+  `echo ${s} && ${s} ${ifWindows('> NUL', '&>/dev/null')}`
+const ignoreError = s => `${s} || true`
+
+const splitVerifyDescription = oneLine`
+  This verifies that the final version actually passes the tests.
+  To do this, we first use split-guide and place the final version
+  in the place of the exercises, then we run the tests, then
+  we re-run the split to have the exercises where they should be.
+`
+
 module.exports = {
   scripts: {
-    default: concurrent.nps('mongo', 'api', 'client'),
-    separateStart: series(
-      runInNewWindow.nps('mongo'),
-      runInNewWindow.nps('api'),
-      runInNewWindow.nps('client')
-    ),
-    mongo: {
+    default: {
+      description: 'starts mongo, the API, and the client in production mode',
+      script: concurrent.nps('mongo.silent', 'api', 'client'),
+    },
+    separateStart: {
+      hiddenFromHelp,
+      description: 'Runs all the start scripts in individual terminals',
       script: series(
-        'mkdirp .mongo-db',
-        `mongod --dbpath ${path.join(__dirname, './.mongo-db')} --quiet`
+        runInNewWindow.nps('mongo'),
+        runInNewWindow.nps('api'),
+        runInNewWindow.nps('client')
       ),
-      description: 'Create the .mongo-db dir and start the mongod process',
-      stop: 'mongo admin --eval "db.shutdownServer()"',
     },
-    api: {
-      script: series('cd api', 'npm start --silent'),
-      description: 'start the api server',
-      test: {
-        script: series('cd api', 'npm test --silent'),
-        description: 'run the api tests',
+    mongo: {
+      description: oneLine`
+        Create the .mongo-db dir and start the mongod process.
+        This also ignores all the output. If you want to see
+        the output, then run: "npm start mongo.start" instead.
+      `,
+      script: series('mkdirp .mongo-db', 'nps mongo.start'),
+      silent: {
+        description: 'Starts the mongo server and ignores the output',
+        script: ignoreOutput('nps mongo'),
+      },
+      start: {
+        description: oneLine`
+          starts the mongodb server with the
+          database pointing to ./mongo-db
+        `,
+        script: `mongod --dbpath "${path.join(__dirname, './.mongo-db')}"`,
+      },
+      stop: {
+        description: 'stops the mongo server',
+        script: 'mongo admin --eval "db.shutdownServer()"',
       },
     },
+    api: getApiScripts(),
     client: {
-      script: series('cd client', 'npm start --silent -- "default 8080"'),
-      description: 'start the client server',
-      test: {
-        script: series('cd client', 'npm test --silent'),
-        description: 'run the client tests',
+      default: {
+        description: 'start the production client server',
+        script: inClient('npm start --silent -- "default 8080"'),
       },
+      test: getTestScripts('client'),
+      demo: getDemoScripts('client'),
+      unit: 'nps client.test.unit.watch',
+      integration: 'nps client.test.integration.watch',
     },
     build: {
-      default: concurrent.nps('build.api', 'build.client'),
-      api: series('cd api', 'npm start build --silent'),
-      client: series('cd client', 'npm start build --silent'),
+      default: {
+        description: 'Build both the client and the api',
+        script: concurrent.nps('build.api', 'build.client'),
+      },
+      api: {
+        script: series('cd api', 'npm start build --silent'),
+        description: 'run the api build',
+      },
+      client: {
+        script: series('cd client', 'npm start build --silent'),
+        description: 'run the client build',
+      },
     },
     dev: {
-      script: concurrent.nps('dev.mongo', 'dev.client', 'dev.api'),
-      separate: series(
-        runInNewWindow.nps('dev.mongo --silent'),
-        runInNewWindow.nps('npm start dev.client --silent'),
-        runInNewWindow.nps('dev.api --silent')
-      ),
       description: 'starts everything in dev mode',
+      script: concurrent.nps('dev.mongo', 'dev.client', 'dev.api'),
+      separate: {
+        hiddenFromHelp,
+        description: 'Runs all of the dev scripts in individual terminals',
+        script: series(
+          runInNewWindow.nps('dev.mongo --silent'),
+          runInNewWindow.nps('npm start dev.client --silent'),
+          runInNewWindow.nps('dev.api --silent')
+        ),
+      },
       // dev is the same as live for mongo for now...
-      mongo: 'npm start mongo --silent',
-      client: series('cd client', 'npm start dev --silent'),
-      api: series('cd api', 'npm start dev --silent'),
+      mongo: {
+        description: oneLine`
+          starts the dev-mode mongo server
+          (same as production mode for now)
+        `,
+        script: 'nps mongo',
+        silent: 'nps mongo.silent',
+      },
+      client: {
+        description: 'starts the client server in dev mode',
+        script: series('cd client', 'npm start dev --silent'),
+      },
+      api: {
+        description: 'starts the api server in dev mode',
+        script: series('cd api', 'npm start dev --silent'),
+      },
     },
     e2e: getE2EScripts(),
     test: {
-      description: 'run the tests in parallel',
-      script: concurrent.nps('api.tests', 'client.tests'),
+      description: 'run the api and client tests in parallel',
+      script: concurrent.nps('api.test', 'client.test'),
     },
     lint: {
-      script: 'eslint .',
+      hiddenFromHelp,
+      script: 'eslint . --cache',
       description: 'lint project files',
     },
     format: {
+      hiddenFromHelp,
       script: 'prettier-eslint --write "api/**/*.js" "client/**/*.js"',
       description: 'autoformat project files',
     },
     validate: {
-      script: concurrent.nps('lint', 'api.test', 'client.test', 'e2e'),
       description: 'validates that things are set up properly',
+      script: series(
+        'nps lint',
+        concurrent.nps(
+          'split.api.verify',
+          'split.client.verify',
+          'split.e2e.verify'
+        )
+      ),
     },
-    addContributor: {
-      description: 'Prompt to add a new contributor to the contributors table',
-      script: 'all-contributors add',
+    split: {
+      default: {
+        script: concurrent.nps('split.api', 'split.client', 'split.e2e'),
+        hiddenFromHelp,
+      },
+      verify: {
+        script: concurrent.nps(
+          'split.api.verify',
+          'split.client.verify',
+          'split.e2e.verify'
+        ),
+        hiddenFromHelp,
+      },
+      client: {
+        default: {
+          script: series(
+            rimraf('client-final'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/client
+              --exercises-dir client
+              --exercises-final-dir client-final
+            `
+          ),
+          hiddenFromHelp,
+        },
+        verify: {
+          hiddenFromHelp,
+          description: splitVerifyDescription,
+          script: series(
+            rimraf('client-final', 'node_modules/.tmp/client'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/client
+              --exercises-dir node_modules/.tmp/client
+              --exercises-final-dir client
+            `,
+            concurrent.nps('client.test', 'client.demo'),
+            'nps split.client'
+          ),
+        },
+      },
+      api: {
+        default: {
+          script: series(
+            rimraf('api-final'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/api
+              --exercises-dir api
+              --exercises-final-dir api-final
+            `
+          ),
+          hiddenFromHelp,
+        },
+        verify: {
+          hiddenFromHelp,
+          description: splitVerifyDescription,
+          script: series(
+            rimraf('api-final', 'node_modules/.tmp/api'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/api
+              --exercises-dir node_modules/.tmp/api
+              --exercises-final-dir api
+            `,
+            concurrent.nps('api.test', 'api.demo'),
+            'nps split.api'
+          ),
+        },
+      },
+      e2e: {
+        default: {
+          script: series(
+            rimraf('cypress-final'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/cypress
+              --exercises-dir cypress
+              --exercises-final-dir cypress-final
+            `
+          ),
+          hiddenFromHelp,
+        },
+        verify: {
+          hiddenFromHelp,
+          description: splitVerifyDescription,
+          script: series(
+            rimraf('cypress-final', 'node_modules/.tmp/cypress'),
+            oneLine`
+              split-guide generate
+              --no-clean
+              --templates-dir other/templates/cypress
+              --exercises-dir node_modules/.tmp/cypress
+              --exercises-final-dir cypress
+            `,
+            'nps e2e',
+            'nps split.e2e'
+          ),
+        },
+      },
     },
-    generateContributors: {
-      description: 'regenerates the contributors table',
-      script: 'all-contributors generate',
+    contributors: {
+      add: {
+        description: oneLine`
+          Prompt to add a new contributor
+          to the contributors table
+        `,
+        script: 'all-contributors add',
+      },
+      generate: {
+        description: 'regenerates the contributors table',
+        script: 'all-contributors generate',
+      },
     },
   },
 }
@@ -96,8 +279,14 @@ function getE2EScripts() {
   const {run, dev} = allScripts.reduce(
     (runDev, scriptName) => {
       const script = `node ./scripts/e2e-${scriptName}`
-      runDev.run[scriptName] = script
-      runDev.dev[scriptName] = crossEnv(`E2E_DEV=true ${script}`)
+      runDev.run[scriptName] = {
+        script,
+        hiddenFromHelp,
+      }
+      runDev.dev[scriptName] = {
+        script: crossEnv(`E2E_DEV=true ${script}`),
+        hiddenFromHelp,
+      }
       return runDev
     },
     {run: {}, dev: {}}
@@ -108,18 +297,25 @@ function getE2EScripts() {
     '--kill-others --success first'
   )
 
-  const loadDatabase = crossEnv(
-    oneLine`
-      MONGO_PORT=27018
-      MONGO_PATH=./.e2e/mongo-db
-      MONGODB_URI="mongodb://localhost:27018/conduit"
-      node ./scripts/load-database.js
-    `
-  )
+  const loadDatabase = {
+    script: crossEnv(
+      oneLine`
+        MONGO_PORT=27018
+        MONGO_PATH=./.e2e/mongo-db
+        MONGODB_URI="mongodb://localhost:27018/conduit"
+        node ./scripts/load-database.js
+      `
+    ),
+    hiddenFromHelp,
+  }
 
   Object.assign(dev, {
-    default: getConcurrentScript(allScripts, devMap),
+    default: {
+      description: 'Run the e2e services and cypress in dev mode.',
+      script: getConcurrentScript(allScripts, devMap),
+    },
     services: {
+      hiddenFromHelp,
       description: oneLine`
         starts all the services.
         Use if you already have cypress running
@@ -128,11 +324,14 @@ function getE2EScripts() {
     },
   })
 
-  const noBuild = getBuildessScript(
-    allScripts,
-    runMap,
-    '--kill-others --success first'
-  )
+  const noBuild = {
+    script: getBuildessScript(
+      allScripts,
+      runMap,
+      '--kill-others --success first'
+    ),
+    hiddenFromHelp,
+  }
 
   return {
     default: {
@@ -176,6 +375,106 @@ function getE2EScripts() {
       --names "${scripts.join(',')}"
       ${npsScripts.join(' ')}
     `
+  }
+}
+
+function getTestScripts(dir) {
+  const inDir = (...scripts) => series(`cd ${dir}`, ...scripts, 'cd ..')
+  return {
+    default: {
+      description: `run all the ${dir} tests`,
+      script: concurrent.nps(`${dir}.test.unit`, `${dir}.test.integration`),
+    },
+    unit: {
+      default: {
+        description: `run the ${dir} unit tests`,
+        script: inDir('npm start test.unit --silent'),
+      },
+      watch: {
+        description: `run the ${dir} unit tests in watch mode`,
+        script: inDir('npm start test.unit.watch --silent'),
+      },
+    },
+    integration: {
+      default: {
+        description: `run the ${dir} integration tests`,
+        script: inDir('npm start test.integration --silent'),
+      },
+      watch: {
+        description: `run the ${dir} integration tests in watch mode`,
+        script: inDir('npm start test.integration.watch --silent'),
+      },
+    },
+  }
+}
+
+function getDemoScripts(dir) {
+  const inDir = (...scripts) => series(`cd ${dir}`, ...scripts, 'cd ..')
+  return {
+    default: {
+      description: `run all the ${dir} demo tests`,
+      script: concurrent.nps(
+        `${dir}.demo.unit.single`,
+        `${dir}.demo.integration.single`
+      ),
+    },
+    unit: {
+      single: {
+        description: `run the ${dir} unit demo tests`,
+        script: inDir('npm start demo.unit --silent'),
+      },
+      default: {
+        description: `run the ${dir} demo unit tests in watch mode`,
+        script: inDir('npm start demo.unit.watch --silent'),
+      },
+    },
+    integration: {
+      single: {
+        description: `run the ${dir} integration demo tests`,
+        script: inDir('npm start demo.integration --silent'),
+      },
+      default: {
+        description: `run the ${dir} demo integration tests in watch mode`,
+        script: inDir('npm start demo.integration.watch --silent'),
+      },
+    },
+  }
+}
+
+function getApiScripts() {
+  const testScripts = getTestScripts('api')
+  return {
+    default: {
+      description: 'start the api server in production mode',
+      script: inApi('npm start --silent'),
+    },
+    test: Object.assign(testScripts, {
+      integration: {
+        default: {
+          description: 'Starts mongo, then starts the integration tests',
+          script: series(
+            // make sure that it's not running before we start it
+            ignoreError(ignoreOutput('nps mongo.stop')),
+            oneLine`
+              concurrently
+              --kill-others
+              --success first
+              --prefix "[{name}]"
+              --names dev.mongo.silent,dev.api,api.test.integration
+              "nps dev.mongo.silent"
+              "
+                ${delay(2)} &&
+                ${inApi('npm start test.integration --silent')}
+              "
+            `
+          ),
+        },
+        watch: testScripts.integration.watch,
+      },
+    }),
+    demo: getDemoScripts('api'),
+    unit: 'nps api.test.unit.watch',
+    integration: 'nps api.test.integration.watch',
   }
 }
 

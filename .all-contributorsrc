@@ -57,6 +57,43 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "asBrettisay",
+      "name": "Brett Caudill",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/13877279?v=3",
+      "profile": "https://github.com/asBrettisay",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "jennifer-mann",
+      "name": "Jennifer Mann",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/1271364?v=3",
+      "profile": "http://jennifermann.ghost.io",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "brian-mann",
+      "name": "Brian Mann",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/1268976?v=3",
+      "profile": "https://cypress.io",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "framini",
+      "name": "Francisco Ramini",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/840935?v=3",
+      "profile": "https://github.com/framini",
+      "contributions": [
+        "doc"
+      ]
     }
   ]
 }

@@ -4,57 +4,33 @@ import agent from '../shared/agent'
 import ListErrors from '../shared/components/list-errors'
 
 class SettingsForm extends React.Component {
-  constructor() {
-    super()
+  state = this.getStateFromProps()
 
-    this.state = {
-      image: '',
-      username: '',
-      bio: '',
-      email: '',
-      password: '',
+  updateState = field => ev => this.setState({[field]: ev.target.value})
+
+  submitForm = ev => {
+    ev.preventDefault()
+
+    const user = {...this.state}
+    if (!user.password) {
+      delete user.password
     }
 
-    this.updateState = field =>
-      ev => {
-        const state = this.state
-        const newState = Object.assign({}, state, {[field]: ev.target.value})
-        this.setState(newState)
-      }
-
-    this.submitForm = ev => {
-      ev.preventDefault()
-
-      const user = Object.assign({}, this.state)
-      if (!user.password) {
-        delete user.password
-      }
-
-      this.props.onSubmitForm(user)
-    }
+    this.props.onSubmitForm(user)
   }
 
-  componentWillMount() {
-    if (this.props.currentUser) {
-      Object.assign(this.state, {
-        image: this.props.currentUser.image || '',
-        username: this.props.currentUser.username,
-        bio: this.props.currentUser.bio,
-        email: this.props.currentUser.email,
-      })
+  getStateFromProps() {
+    return {
+      image: this.props.currentUser.image || '',
+      username: this.props.currentUser.username,
+      bio: this.props.currentUser.bio,
+      email: this.props.currentUser.email,
     }
   }
 
   componentWillReceiveProps(nextProps) {
     if (nextProps.currentUser) {
-      this.setState(
-        Object.assign({}, this.state, {
-          image: nextProps.currentUser.image || '',
-          username: nextProps.currentUser.username,
-          bio: nextProps.currentUser.bio,
-          email: nextProps.currentUser.email,
-        }),
-      )
+      this.setState(this.getStateFromProps())
     }
   }
 
@@ -70,7 +46,7 @@ class SettingsForm extends React.Component {
               placeholder="URL of profile picture"
               value={this.state.image}
               onChange={this.updateState('image')}
-              data-e2e="profile-url"
+              data-test="profile-url"
             />
           </fieldset>
 
@@ -81,7 +57,7 @@ class SettingsForm extends React.Component {
               placeholder="Username"
               value={this.state.username}
               onChange={this.updateState('username')}
-              data-e2e="username"
+              data-test="username"
             />
           </fieldset>
 
@@ -92,7 +68,7 @@ class SettingsForm extends React.Component {
               placeholder="Short bio about you"
               value={this.state.bio}
               onChange={this.updateState('bio')}
-              data-e2e="bio"
+              data-test="bio"
             />
           </fieldset>
 
@@ -103,7 +79,7 @@ class SettingsForm extends React.Component {
               placeholder="Email"
               value={this.state.email}
               onChange={this.updateState('email')}
-              data-e2e="email"
+              data-test="email"
             />
           </fieldset>
 
@@ -114,7 +90,7 @@ class SettingsForm extends React.Component {
               placeholder="New Password"
               value={this.state.password}
               onChange={this.updateState('password')}
-              data-e2e="password"
+              data-test="password"
             />
           </fieldset>
 
@@ -122,7 +98,7 @@ class SettingsForm extends React.Component {
             className="btn btn-lg btn-primary pull-xs-right"
             type="submit"
             disabled={this.state.inProgress}
-            data-e2e="update"
+            data-test="update"
           >
             Update Settings
           </button>
@@ -166,7 +142,7 @@ function Settings(props) {
             <button
               className="btn btn-outline-danger"
               onClick={props.onClickLogout}
-              data-e2e="logout"
+              data-test="logout"
             >
               Or click here to logout.
             </button>

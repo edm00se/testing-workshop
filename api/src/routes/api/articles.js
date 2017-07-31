@@ -1,3 +1,4 @@
+// api/src/routes/api/articles.js
 import express from 'express'
 import mongoose from 'mongoose'
 import auth from '../auth'
@@ -145,7 +146,6 @@ function getArticlesRouter() {
         article.author = user
 
         return article.save().then(() => {
-          console.log(article.author)
           return res.json({article: article.toJSONFor(user)})
         })
       })
@@ -194,7 +194,7 @@ function getArticlesRouter() {
   // delete article
   router.delete('/:article', auth.required, (req, res) => {
     User.findById(req.payload.id).then(() => {
-      if (req.article.author.toString() === req.payload.id.toString()) {
+      if (req.article.author._id.toString() === req.payload.id.toString()) {
         return req.article.remove().then(() => {
           return res.sendStatus(204)
         })

@@ -1,5 +1,5 @@
 import React from 'react'
-import {Link} from 'react-router'
+import {Link} from 'react-router-dom'
 import {connect} from 'react-redux'
 import agent from '../../shared/agent'
 
@@ -19,7 +19,7 @@ const ArticleActions = props => {
         <Link
           to={`/editor/${article.slug}`}
           className="btn btn-outline-secondary btn-sm"
-          data-e2e="edit"
+          data-test="edit"
         >
           <i className="ion-edit" /> Edit Article
         </Link>

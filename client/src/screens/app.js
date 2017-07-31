@@ -1,4 +1,5 @@
 import React from 'react'
+import PropTypes from 'prop-types'
 import {connect} from 'react-redux'
 import agent from '../shared/agent'
 import Header from '../shared/components/header'
@@ -19,7 +20,7 @@ const mapDispatchToProps = dispatch => ({
 class App extends React.Component {
   componentWillReceiveProps(nextProps) {
     if (nextProps.redirectTo) {
-      this.context.router.push(nextProps.redirectTo)
+      this.context.router.history.push(nextProps.redirectTo)
       this.props.onRedirect()
     }
   }
@@ -57,7 +58,7 @@ class App extends React.Component {
 }
 
 App.contextTypes = {
-  router: React.PropTypes.object.isRequired,
+  router: PropTypes.object.isRequired,
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(App)

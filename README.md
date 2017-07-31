@@ -8,7 +8,7 @@ JavaScript applications.
 [![Build Status][build-badge]][build]
 [![Dependencies][dependencyci-badge]][dependencyci]
 [![MIT License][license-badge]][LICENSE]
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors)
+[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors)
 
 [![PRs Welcome][prs-badge]][prs]
 [![Donate][donate-badge]][donate]
@@ -38,6 +38,14 @@ configure the tools and why, when, where, and what to test.
 
 ## Project
 
+## Branches
+
+This project has been used to teach about testing in various settings. You may want to
+switch to the appropriate branch for this workshop. Otherwise the code you're looking
+at may not be exactly the same as the code used in the setting you're working with.
+
+- Frontend Masters [`fem`](https://github.com/kentcdodds/testing-workshop/tree/fem)
+
 ### System Requirements
 
 - [git][git] v2.10.2 or greater
@@ -66,9 +74,15 @@ commands to get set up:
 git clone https://github.com/kentcdodds/testing-workshop.git
 cd testing-workshop
 npm run setup --silent
+node ./scripts/autofill-feedback-email.js YOUR@EMAIL.com
+git commit -am "ready to go"
 ```
 
-This may take a few minutes. If you get any errors, please read the error output and see whether there's any
+> Change `YOUR@EMAIL.com` to your actual email address
+
+This may take a few minutes. If you get any errors, run `git reset origin/master --hard` to make sure
+you have a clean project again,
+then please read the error output and see whether there's any
 instructions to fix things and try again. If you're still getting errors or need any help at all, then please
 [file an issue][issue].
 
@@ -77,15 +91,39 @@ instructions to fix things and try again. If you're still getting errors or need
 <img src="other/cypress-network.png" alt="Cypress Network issue" title="Cypress Network issue" width="400" />
 
 I'm not sure how to prevent this from happening (suggestions appreciated!) but it happens every time you run the `e2e`
-tests. Just hit `Allow` (super annoying). Sorry about that 😞
+tests. Just do nothing or hit `Allow` to make it go away (super annoying). Sorry about that 😞
+
+#### Cypress
+
+> If you're a windows user, please see the next section...
+
+For everyone else, you'll want to come with Cypress.io downloaded, installed and have an account ready to go.
+Please follow [these instructions](https://docs.cypress.io/docs/installing-and-running) to do this!
+
+##### Windows users!!
+
+Unfortunately, the [cypress](https://www.cypress.io/) application does not yet support the Windows platform.
+(Bug them about it [here](https://github.com/cypress-io/cypress/issues/74)).
+You should still be able to run cypress in "headless" mode, but you will be unable to open the application
+for development.
+
+To get around this issue, you'll have to run the E2E portion of the workshop on Linux or Mac. I recommend either
+installing and booting your machine in Linux, or running a Linux Virtual Machine on your Windows computer.
+
+Alternatively, you could just forego the application bit and mostly observe that portion of the workshop. If you're
+doing this with a group, perhaps you could pair with someone who has a Mac or Linux machine.
 
 ### Running the app
 
 To get the app up and running (and really see if it worked), run:
 
-```
+```shell
 npm start dev
+
+# if using yarn
+yarn start dev
 ```
+
 
 This _should_ start `mongod`, the `api` server, and the `client` server all at
 the same time. Your browser should open up automatically to
@@ -100,6 +138,13 @@ If this fails at any point for you, please first see
 [Troubleshooting](#troubleshooting) and if you still can't get it working,
 [make an issue][issue].
 
+#### Login
+
+If you want to login, there's a user you can use:
+
+- **Email**: `joe@example.com`
+- **Password**: `joe`
+
 **To stop all the servers**, hit <kbd>Ctrl</kbd> + <kbd>C</kbd>.
 
 > Protip: we're using [`nps`](https://github.com/kentcdodds/nps) in this
@@ -109,7 +154,57 @@ If this fails at any point for you, please first see
 
 ### Troubleshooting
 
-#### `npm dev` command not working
+<details>
+
+<summary>"npm run setup" command not working</summary>
+
+Here's what the setup script does. If it fails, try doing each of these things individually yourself:
+
+```
+# verify your environment will work with the project
+node ./scripts/verify
+
+# install dependencies in the root of the repo
+yarn
+
+# install dependencies in the api directory
+cd api
+yarn
+
+# install dependencies in the client directory
+cd ../client
+yarn
+
+# get back to the root of the repo
+cd ..
+
+# load the database with fake data
+node ./scripts/load-database
+
+# verify the project is ready to run
+npm start lint
+npm start split.api.verify
+npm start split.client.verify
+npm start split.e2e.verify
+```
+
+If any of those scripts fail, feel free to file an issue with the output from that script.
+I will try to help if I can.
+
+In addition, during some of these steps, some files get temporarily changed and if they fail,
+then you may have changed but not cleaned up. So when everything's finished. Run:
+
+```
+git reset --hard HEAD
+```
+
+Just to make sure nothing's left over.
+
+</details>
+
+<details>
+
+<summary>"npm start dev" command not working</summary>
 
 If it doesn't work for you, you can start each of these individually yourself:
 
@@ -125,12 +220,18 @@ npm start dev.api
 npm start dev.client
 ```
 
-#### `verify.js` saying something's wrong with mongo
+</details>
+
+<details>
+
+<summary>"verify.js" is saying something's wrong with mongo</summary>
 
 The `mongod` binary needs to be available in your path for you to run `mongod` from the command line (which is what this
 project's scripts does for you). Learn how to do this [on windows][win-path] or [on mac][mac-path].
 
 > Note: you'll need to open a new terminal/command prompt window after you've done this.
+
+</details>
 
 ### Structure
 
@@ -151,8 +252,9 @@ licensed.
 Thanks goes to these wonderful people ([emoji key](https://github.com/kentcdodds/all-contributors#emoji-key)):
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-| [<img src="https://avatars.githubusercontent.com/u/8601733?v=3" width="100px;"/><br /><sub>Thinkster</sub>](https://thinkster.io)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=gothinkster) | [<img src="https://avatars.githubusercontent.com/u/1500684?v=3" width="100px;"/><br /><sub>Kent C. Dodds</sub>](https://kentcdodds.com)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) [📖](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) 🚇 [⚠️](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) | [<img src="https://avatars.githubusercontent.com/u/3995499?v=3" width="100px;"/><br /><sub>Callum Mellor-Reed</sub>](http://callummr.com)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Acallummr) [💻](https://github.com/kentcdodds/testing-workshop/commits?author=callummr) | [<img src="https://avatars.githubusercontent.com/u/622118?v=3" width="100px;"/><br /><sub>Eric McCormick</sub>](https://ericmccormick.io)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Aedm00se) [💻](https://github.com/kentcdodds/testing-workshop/commits?author=edm00se) | [<img src="https://avatars1.githubusercontent.com/u/2028470?v=3" width="100px;"/><br /><sub>Paul Falgout</sub>](http://otterball.com)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=paulfalgout) [📖](https://github.com/kentcdodds/testing-workshop/commits?author=paulfalgout) |
-| :---: | :---: | :---: | :---: | :---: |
+| [<img src="https://avatars.githubusercontent.com/u/8601733?v=3" width="100px;"/><br /><sub>Thinkster</sub>](https://thinkster.io)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=gothinkster) | [<img src="https://avatars.githubusercontent.com/u/1500684?v=3" width="100px;"/><br /><sub>Kent C. Dodds</sub>](https://kentcdodds.com)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) [📖](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) 🚇 [⚠️](https://github.com/kentcdodds/testing-workshop/commits?author=kentcdodds) | [<img src="https://avatars.githubusercontent.com/u/3995499?v=3" width="100px;"/><br /><sub>Callum Mellor-Reed</sub>](http://callummr.com)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Acallummr) [💻](https://github.com/kentcdodds/testing-workshop/commits?author=callummr) | [<img src="https://avatars.githubusercontent.com/u/622118?v=3" width="100px;"/><br /><sub>Eric McCormick</sub>](https://ericmccormick.io)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Aedm00se) [💻](https://github.com/kentcdodds/testing-workshop/commits?author=edm00se) | [<img src="https://avatars1.githubusercontent.com/u/2028470?v=3" width="100px;"/><br /><sub>Paul Falgout</sub>](http://otterball.com)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=paulfalgout) [📖](https://github.com/kentcdodds/testing-workshop/commits?author=paulfalgout) | [<img src="https://avatars1.githubusercontent.com/u/13877279?v=3" width="100px;"/><br /><sub>Brett Caudill</sub>](https://github.com/asBrettisay)<br />[💻](https://github.com/kentcdodds/testing-workshop/commits?author=asBrettisay) [📖](https://github.com/kentcdodds/testing-workshop/commits?author=asBrettisay) | [<img src="https://avatars2.githubusercontent.com/u/1271364?v=3" width="100px;"/><br /><sub>Jennifer Mann</sub>](http://jennifermann.ghost.io)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Ajennifer-mann) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| [<img src="https://avatars1.githubusercontent.com/u/1268976?v=3" width="100px;"/><br /><sub>Brian Mann</sub>](https://cypress.io)<br />[🐛](https://github.com/kentcdodds/testing-workshop/issues?q=author%3Abrian-mann) | [<img src="https://avatars1.githubusercontent.com/u/840935?v=3" width="100px;"/><br /><sub>Francisco Ramini</sub>](https://github.com/framini)<br />[📖](https://github.com/kentcdodds/testing-workshop/commits?author=framini) |
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/kentcdodds/all-contributors) specification. Contributions of any kind welcome!

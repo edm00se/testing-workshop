@@ -8,7 +8,7 @@ import {
 test('can create a new empty article', () => {
   const Article = getArticleConstructor()
   const article = new Article()
-  expect(article.toJSON()).toStrictlyMatchObject({
+  expect(article.toJSON()).toEqual({
     _id: expect.any(mongoose.Types.ObjectId),
     tagList: [],
     comments: [],
@@ -22,7 +22,7 @@ test('generates a slug when validated', () => {
   })
   article.validate()
   expect(article.slug).toBe(
-    'i-tested-my-codebase-you-wont-believe-what-happened-next',
+    'i-tested-my-codebase-you-wont-believe-what-happened-next...',
   )
 })
 
